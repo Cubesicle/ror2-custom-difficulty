@@ -66,51 +66,26 @@ public static class DifficultyConfigUI
             show = false;
             return;
         }
-
-        // Safely check if the difficulty changed while inside the lobby
-        if (PreGameController.instance && PreGameController.instance.readOnlyRuleBook != null)
-        {
-            if (PreGameController.instance.readOnlyRuleBook.FindDifficulty() != CustomDifficulty.DifficultyIndex)
-            {
-                show = false;
-            }
-        }
     }
 
-    public static void RuleChoiceController_Start(On.RoR2.UI.RuleChoiceController.orig_Start orig, RuleChoiceController self)
+    public static void RuleChoiceController_OnClick(On.RoR2.UI.RuleChoiceController.orig_OnClick orig, RuleChoiceController self)
     {
         orig(self);
 
-        // Check for an existing EventTrigger, add one only if it doesn't exist
-        var eventTrigger = self.gameObject.GetComponent<UnityEngine.EventSystems.EventTrigger>();
-        if (eventTrigger is null)
+        if (self.choiceDef is not null && PreGameController.instance && PreGameController.instance.readOnlyRuleBook != null)
         {
-            eventTrigger = self.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
-        }
+            DifficultyIndex clickedDifficulty = self.choiceDef.difficultyIndex;
 
-        // Create a new trigger entry specifically for clicks
-        var clickEntry = new UnityEngine.EventSystems.EventTrigger.Entry
-        {
-            eventID = UnityEngine.EventSystems.EventTriggerType.PointerClick
-        };
-
-        // Bind an anonymous lambda function to the callback
-        clickEntry.callback.AddListener((eventData) =>
-        {
-            if (eventData as UnityEngine.EventSystems.PointerEventData is not { } pointerData) return;
-
-            // Check for right-click
-            if (pointerData.button == UnityEngine.EventSystems.PointerEventData.InputButton.Right)
+            if (NetworkServer.active)
             {
-                if (self.choiceDef?.difficultyIndex == CustomDifficulty.DifficultyIndex)
-                {
-                    show = true;
-                }
+                // If the same difficulty is clicked on for the host, the difficulty changes, so hide the UI.
+                show = (clickedDifficulty == CustomDifficulty.DifficultyIndex && PreGameController.instance.readOnlyRuleBook.FindDifficulty() != CustomDifficulty.DifficultyIndex);
             }
-        });
-
-        // Register the entry to the trigger
-        eventTrigger.triggers.Add(clickEntry);
+            else
+            {
+                show = (clickedDifficulty == CustomDifficulty.DifficultyIndex && PreGameController.instance.readOnlyRuleBook.FindDifficulty() == CustomDifficulty.DifficultyIndex);
+            }
+        }
     }
 
     private static void DrawConfigWindow(int windowID)

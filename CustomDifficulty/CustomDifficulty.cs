@@ -39,7 +39,7 @@ public class CustomDifficulty : BaseUnityPlugin
         statHookEventHandler = new RecalculateStatsAPI.StatHookEventHandler(RecalculateStatsAPI_GetStatCoefficients);
 
         RoR2.NetworkUser.onPostNetworkUserStart += NetworkUser_onPostNetworkUserStart;
-        On.RoR2.UI.RuleChoiceController.Start += DifficultyConfigUI.RuleChoiceController_Start;
+        On.RoR2.UI.RuleChoiceController.OnClick += DifficultyConfigUI.RuleChoiceController_OnClick;
         Run.onRunStartGlobal += Run_onRunStartGlobal;
         Run.onRunDestroyGlobal += Run_onRunDestroyGlobal;
 
@@ -60,7 +60,7 @@ public class CustomDifficulty : BaseUnityPlugin
     {
         // Cleanup logic
         RoR2.NetworkUser.onPostNetworkUserStart -= NetworkUser_onPostNetworkUserStart;
-        On.RoR2.UI.RuleChoiceController.Start -= DifficultyConfigUI.RuleChoiceController_Start;
+        On.RoR2.UI.RuleChoiceController.OnClick -= DifficultyConfigUI.RuleChoiceController_OnClick;
         Run.onRunStartGlobal -= Run_onRunStartGlobal;
         Run.onRunDestroyGlobal -= Run_onRunDestroyGlobal;
 
@@ -75,7 +75,7 @@ public class CustomDifficulty : BaseUnityPlugin
         DifficultyConfigUI.OnGUI();
     }
 
-    private void OnUpdate()
+    private void Update()
     {
         DifficultyConfigUI.Update();
     }
