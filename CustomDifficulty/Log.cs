@@ -4,7 +4,7 @@ using System.IO;
 
 internal static class Log
 {
-    private static ManualLogSource _logSource;
+    private static ManualLogSource? _logSource;
 
     internal static void Init(ManualLogSource logSource)
     {
@@ -21,36 +21,36 @@ internal static class Log
         object data,
         [CallerFilePath] string file = "",
         [CallerLineNumber] int line = 0)
-        => _logSource.LogDebug(Format(data, file, line));
+        => _logSource!.LogDebug(Format(data, file, line));
 
     internal static void Error(
         object data,
         [CallerFilePath] string file = "",
         [CallerLineNumber] int line = 0)
-        => _logSource.LogError(Format(data, file, line));
+        => _logSource!.LogError(Format(data, file, line));
 
     internal static void Fatal(
         object data,
         [CallerFilePath] string file = "",
         [CallerLineNumber] int line = 0)
-        => _logSource.LogFatal(Format(data, file, line));
+        => _logSource!.LogFatal(Format(data, file, line));
 
     internal static void Info(
         object data,
         [CallerFilePath] string file = "",
         [CallerLineNumber] int line = 0)
-        => _logSource.LogInfo(Format(data, file, line));
+        => _logSource!.LogInfo(Format(data, file, line));
 
     internal static void Message(
         object data,
         [CallerFilePath] string file = "",
         [CallerLineNumber] int line = 0)
-        => _logSource.LogMessage(Format(data, file, line));
+        => _logSource!.LogMessage(Format(data, file, line));
 
     internal static void Warning(
         object data,
         [CallerFilePath] string file = "",
         [CallerLineNumber] int line = 0)
-        => _logSource.LogWarning(Format(data, file, line));
+        => _logSource!.LogWarning(Format(data, file, line));
 }
 

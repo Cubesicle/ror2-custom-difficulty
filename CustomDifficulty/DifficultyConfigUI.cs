@@ -47,8 +47,6 @@ public static class DifficultyConfigUI
 
     public static void OnGUI()
     {
-        if (SceneManager.GetActiveScene().name != "lobby") show = false;
-
         if (!show) return;
 
         // Change the title based on who is looking at it
@@ -58,15 +56,61 @@ public static class DifficultyConfigUI
         windowRect = GUI.Window(0, windowRect, DrawConfigWindow, windowTitle);
     }
 
-    public static void RuleChoiceController_OnClick(On.RoR2.UI.RuleChoiceController.orig_OnClick orig, RuleChoiceController self)
+    public static void Update()
+    {
+        if (!show) return;
+
+        // If we are no longer in the lobby, close the menu and stop checking
+        if (SceneManager.GetActiveScene().name != "lobby")
+        {
+            show = false;
+            return;
+        }
+
+        // Safely check if the difficulty changed while inside the lobby
+        if (PreGameController.instance && PreGameController.instance.readOnlyRuleBook != null)
+        {
+            if (PreGameController.instance.readOnlyRuleBook.FindDifficulty() != CustomDifficulty.DifficultyIndex)
+            {
+                show = false;
+            }
+        }
+    }
+
+    public static void RuleChoiceController_Start(On.RoR2.UI.RuleChoiceController.orig_Start orig, RuleChoiceController self)
     {
         orig(self);
 
-        if (self.choiceDef != null)
+        // 1. Check for an existing EventTrigger, add one only if it doesn't exist
+        var eventTrigger = self.gameObject.GetComponent<UnityEngine.EventSystems.EventTrigger>();
+        if (eventTrigger is null)
         {
-            DifficultyIndex clickedDifficulty = self.choiceDef.difficultyIndex;
-            show = (clickedDifficulty == CustomDifficulty.DifficultyIndex);
+            eventTrigger = self.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
         }
+
+        // 2. Create a new trigger entry specifically for clicks
+        var clickEntry = new UnityEngine.EventSystems.EventTrigger.Entry
+        {
+            eventID = UnityEngine.EventSystems.EventTriggerType.PointerClick
+        };
+
+        // 3. Bind an anonymous lambda function to the callback
+        clickEntry.callback.AddListener((eventData) =>
+        {
+            if (eventData as UnityEngine.EventSystems.PointerEventData is not { } pointerData) return;
+
+            // Check for right-click
+            if (pointerData.button == UnityEngine.EventSystems.PointerEventData.InputButton.Right)
+            {
+                if (self.choiceDef?.difficultyIndex == CustomDifficulty.DifficultyIndex)
+                {
+                    show = true;
+                }
+            }
+        });
+
+        // 4. Register the entry to the trigger
+        eventTrigger.triggers.Add(clickEntry);
     }
 
     private static void DrawConfigWindow(int windowID)
@@ -80,7 +124,7 @@ public static class DifficultyConfigUI
         GUILayout.Label("Scaling Factor (Time Diff.)", GUILayout.Width(200));
 
         // Determine value to show
-        float currentScaling = isHost ? DifficultyConfig.ScalingFactorConfig.Value : DifficultyConfig.ActiveScalingFactor;
+        float currentScaling = isHost ? DifficultyConfig.ScalingFactorConfig!.Value : DifficultyConfig.ActiveScalingFactor;
 
         if (!textBuffers.ContainsKey("ScalingFactor") || !isHost)
         {
@@ -93,7 +137,7 @@ public static class DifficultyConfigUI
 
         if (isHost && float.TryParse(textBuffers["ScalingFactor"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedScaling))
         {
-            DifficultyConfig.ScalingFactorConfig.Value = parsedScaling;
+            DifficultyConfig.ScalingFactorConfig!.Value = parsedScaling;
         }
         GUILayout.EndHorizontal();
 
@@ -121,7 +165,7 @@ public static class DifficultyConfigUI
         GUILayout.Space(10);
 
         // Scroll view
-        scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(345));
+        scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(300));
 
         // We still iterate over the Host's local config keys to get the list of stats
         var configKeys = selectedTab == 0 ? DifficultyConfig.PlayerConfigs : DifficultyConfig.EnemyConfigs;
@@ -140,27 +184,31 @@ public static class DifficultyConfigUI
 
             string bufferId = (selectedTab == 0 ? "P_" : "E_") + statName;
 
-            // Determine what value to actually show on screen
             float displayValue = 0f;
             if (isHost)
             {
-                displayValue = kvp.Value.Value; // Host sees their own live editing values
+                displayValue = kvp.Value.Value;
             }
             else
             {
-                // Clients pull from the temporary synced dictionary
                 syncedStats.TryGetValue(statName, out displayValue);
             }
 
-            // If we are a client, force the text buffer to update to the host's value constantly
-            if (!textBuffers.ContainsKey(bufferId) || !isHost)
+            if (!textBuffers.TryGetValue(bufferId, out string existingBuffer))
             {
-                textBuffers[bufferId] = displayValue.ToString();
+                textBuffers[bufferId] = displayValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+            else if (!isHost)
+            {
+                if (float.TryParse(existingBuffer, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedBuffer) && parsedBuffer != displayValue)
+                {
+                    textBuffers[bufferId] = displayValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
             }
 
             GUILayout.BeginHorizontal();
-
             Color originalColor = GUI.contentColor;
+
             if (displayValue != 0f)
             {
                 GUI.contentColor = Color.yellow;
@@ -168,15 +216,10 @@ public static class DifficultyConfigUI
 
             GUILayout.Label(statName, GUILayout.Width(200));
 
-            // Setting GUI.enabled to false grays out all subsequent UI elements and makes them unclickable
             GUI.enabled = isHost;
-
             textBuffers[bufferId] = GUILayout.TextField(textBuffers[bufferId], GUILayout.Width(100));
-
-            // Turn it back on immediately so the rest of the UI doesn't break
             GUI.enabled = true;
 
-            // Only attempt to save the typed text if we are the host
             if (isHost)
             {
                 if (float.TryParse(textBuffers[bufferId], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedValue))
@@ -186,7 +229,6 @@ public static class DifficultyConfigUI
             }
 
             GUI.contentColor = originalColor;
-
             GUILayout.EndHorizontal();
         }
 

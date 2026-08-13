@@ -19,7 +19,7 @@ public class CustomDifficulty : BaseUnityPlugin
     public const string PluginName = "CustomDifficulty";
     public const string PluginVersion = "0.0.0";
 
-    public static DifficultyDef DifficultyDef { get; private set; }
+    public static DifficultyDef? DifficultyDef { get; private set; }
     public static DifficultyIndex DifficultyIndex { get; private set; }
 
     private void Awake()
@@ -35,13 +35,13 @@ public class CustomDifficulty : BaseUnityPlugin
 
         // Hooks
         RoR2.NetworkUser.onPostNetworkUserStart += NetworkUser_onPostNetworkUserStart;
-        On.RoR2.UI.RuleChoiceController.OnClick += DifficultyConfigUI.RuleChoiceController_OnClick;
+        On.RoR2.UI.RuleChoiceController.Start += DifficultyConfigUI.RuleChoiceController_Start;
 
         RecalculateStatsAPI.StatHookEventHandler getStatCoefficientsEventHandler = new RecalculateStatsAPI.StatHookEventHandler(RecalculateStatsAPI_GetStatCoefficients);
 
         // Difficulty
         DifficultyDef = new DifficultyDef(
-            DifficultyConfig.ScalingFactorConfig.Value, //This is the scaling factor, and decides how quickly the difficulty ramps up. drizzle is 1, rainstorm=2, monsoon=3.
+            0f, //This is the scaling factor, and decides how quickly the difficulty ramps up. drizzle is 1, rainstorm=2, monsoon=3.
             "Custom",//The name token. consider using AssetPlus.Language to add your tokens.
             "", //The iconpath, You can use a vanilla icon, or with use of AssetAPI/RescourceAPI use your own custom one.
             "idk",//The description token. consider using AssetPlus.Language to add your tokens.
@@ -76,12 +76,17 @@ public class CustomDifficulty : BaseUnityPlugin
     {
         // Cleanup logic
         RoR2.NetworkUser.onPostNetworkUserStart -= NetworkUser_onPostNetworkUserStart;
-        On.RoR2.UI.RuleChoiceController.OnClick -= DifficultyConfigUI.RuleChoiceController_OnClick;
+        On.RoR2.UI.RuleChoiceController.Start -= DifficultyConfigUI.RuleChoiceController_Start;
     }
 
     private void OnGUI()
     {
         DifficultyConfigUI.OnGUI();
+    }
+
+    private void OnUpdate()
+    {
+        DifficultyConfigUI.Update();
     }
 
     private void NetworkUser_onPostNetworkUserStart(NetworkUser networkUser)
@@ -97,7 +102,7 @@ public class CustomDifficulty : BaseUnityPlugin
     {
         if (!sender || !sender.teamComponent) return;
 
-        Dictionary<string, float> activeStats = null;
+        Dictionary<string, float>? activeStats = null;
 
         if (sender.isPlayerControlled)
         {

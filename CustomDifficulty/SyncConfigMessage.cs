@@ -55,7 +55,10 @@ public class SyncConfigMessage : INetMessage
     {
         if (NetworkServer.active) return;
 
-        CustomDifficulty.DifficultyDef.scalingValue = DifficultyConfig.ActiveScalingFactor;
+        if (CustomDifficulty.DifficultyDef is { } def)
+        {
+            def.scalingValue = DifficultyConfig.ActiveScalingFactor;
+        }
 
         Log.Info("Successfully synced custom difficulty stats from Host.");
     }

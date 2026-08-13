@@ -7,10 +7,10 @@ using System.Linq.Expressions;
 
 public static class DifficultyConfig
 {
-    public static ConfigFile configFile { private get; set; }
+    public static ConfigFile? configFile { private get; set; }
 
     // Saved settings on the player's local machine
-    public static ConfigEntry<float> ScalingFactorConfig;
+    public static ConfigEntry<float>? ScalingFactorConfig;
     public static Dictionary<FieldInfo, ConfigEntry<float>> PlayerConfigs = new Dictionary<FieldInfo, ConfigEntry<float>>();
     public static Dictionary<FieldInfo, ConfigEntry<float>> EnemyConfigs = new Dictionary<FieldInfo, ConfigEntry<float>>();
 
@@ -25,8 +25,8 @@ public static class DifficultyConfig
 
     public class StatAccessor
     {
-        public GetStatDelegate Get;
-        public SetStatDelegate Set;
+        public required GetStatDelegate Get;
+        public required SetStatDelegate Set;
     }
 
     // Stores compiled delegates, mapped by field name
@@ -34,39 +34,30 @@ public static class DifficultyConfig
 
     public static void Bind()
     {
+        if (configFile is null) return;
+
         ScalingFactorConfig = configFile.Bind(
             "Run Stats",
             "Scaling Factor",
-            3.0f,
+            1f,
             "Base difficulty time-scaling factor. (Drizzle=1.0, Rainstorm=2.0, Monsoon=3.0)"
         );
 
         FieldInfo[] fields = typeof(RecalculateStatsAPI.StatHookEventArgs).GetFields(BindingFlags.Public | BindingFlags.Instance);
-
         foreach (FieldInfo field in fields)
         {
             if (field.FieldType == typeof(float))
             {
-                // Compile expression trees
-                // Define the parameters
                 var argsParam = Expression.Parameter(typeof(RecalculateStatsAPI.StatHookEventArgs), "args");
                 var valueParam = Expression.Parameter(typeof(float), "value");
-
-                // Access the specific field on the args instance
                 var fieldAccess = Expression.Field(argsParam, field);
 
-                // Compile the Getter: (args) => args.FieldName
                 var getter = Expression.Lambda<GetStatDelegate>(fieldAccess, argsParam).Compile();
-
-                // Compile the Setter: (args, value) => args.FieldName = value
                 var setter = Expression.Lambda<SetStatDelegate>(Expression.Assign(fieldAccess, valueParam), argsParam, valueParam).Compile();
-
-                // Store them in our dictionary for instant lookup later
                 Accessors[field.Name] = new StatAccessor { Get = getter, Set = setter };
 
-
-                // Bind configurations
                 string description = $"Amount ADDED to {field.Name}. (Note: All fields are strictly additive. For 'mult' fields, 1.0 adds +100%.)";
+
                 var playerConfig = configFile.Bind("Player Stats", field.Name, 0f, description);
                 PlayerConfigs.Add(field, playerConfig);
 
@@ -76,16 +67,19 @@ public static class DifficultyConfig
         }
     }
 
-    public static void Save() => configFile.Save();
-    public static void Reload() => configFile.Reload();
+    public static void Save() => configFile?.Save();
+    public static void Reload() => configFile?.Reload();
 
     public static void SyncHostConfigToClients()
     {
+        if (ScalingFactorConfig is null || CustomDifficulty.DifficultyDef is null) return;
+
         ActiveScalingFactor = ScalingFactorConfig.Value;
         CustomDifficulty.DifficultyDef.scalingValue = ActiveScalingFactor;
 
         ActivePlayerStats.Clear();
         ActiveEnemyStats.Clear();
+
         foreach (var kvp in PlayerConfigs) ActivePlayerStats[kvp.Key.Name] = kvp.Value.Value;
         foreach (var kvp in EnemyConfigs) ActiveEnemyStats[kvp.Key.Name] = kvp.Value.Value;
 
