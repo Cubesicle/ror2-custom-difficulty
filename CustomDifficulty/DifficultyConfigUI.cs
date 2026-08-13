@@ -56,31 +56,25 @@ public static class DifficultyConfigUI
         if (!show) return;
 
         // If we are no longer in the lobby, close the menu and stop checking
-        if (SceneManager.GetActiveScene().name != "lobby")
-        {
-            show = false;
-            return;
-        }
+        if (SceneManager.GetActiveScene().name != "lobby") show = false;
     }
 
     public static void RuleChoiceController_OnClick(On.RoR2.UI.RuleChoiceController.orig_OnClick orig, RuleChoiceController self)
     {
         orig(self);
 
-        if (self.choiceDef is not null && PreGameController.instance && PreGameController.instance.readOnlyRuleBook != null)
+        NetworkUser networkUser = self.FindNetworkUser();
+        if (!networkUser)
         {
-            DifficultyIndex clickedDifficulty = self.choiceDef.difficultyIndex;
-
-            if (isHost())
-            {
-                // If the same difficulty is clicked on for the host, the difficulty changes, so hide the UI.
-                show = (clickedDifficulty == CustomDifficulty.DifficultyIndex && PreGameController.instance.readOnlyRuleBook.FindDifficulty() != CustomDifficulty.DifficultyIndex);
-            }
-            else
-            {
-                show = (clickedDifficulty == CustomDifficulty.DifficultyIndex && PreGameController.instance.readOnlyRuleBook.FindDifficulty() == CustomDifficulty.DifficultyIndex);
-            }
+            return;
         }
+        PreGameRuleVoteController preGameRuleVoteController = PreGameRuleVoteController.FindForUser(networkUser);
+        if (!preGameRuleVoteController)
+        {
+            return;
+        }
+
+        show = self.choiceDef.difficultyIndex == CustomDifficulty.DifficultyIndex && preGameRuleVoteController.IsChoiceVoted(self.choiceDef);
     }
 
     private static void DrawConfigWindow(int windowID)
