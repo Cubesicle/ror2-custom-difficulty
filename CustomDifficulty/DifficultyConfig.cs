@@ -86,4 +86,16 @@ public static class DifficultyConfig
         new SyncConfigMessage().Send(R2API.Networking.NetworkDestination.Clients);
         Log.Info("Host updated custom difficulty stats and synced to clients.");
     }
+
+    public static void ApplySyncedSettings(float scalingFactor, Dictionary<string, float> newPlayerStats, Dictionary<string, float> newEnemyStats)
+    {
+        ActiveScalingFactor = scalingFactor;
+        if (CustomDifficulty.DifficultyDef is { } def)
+        {
+            def.scalingValue = ActiveScalingFactor;
+        }
+
+        ActivePlayerStats = newPlayerStats;
+        ActiveEnemyStats = newEnemyStats;
+    }
 }

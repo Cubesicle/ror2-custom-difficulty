@@ -22,6 +22,8 @@ public class CustomDifficulty : BaseUnityPlugin
     public static DifficultyDef? DifficultyDef { get; private set; }
     public static DifficultyIndex DifficultyIndex { get; private set; }
 
+    private RecalculateStatsAPI.StatHookEventHandler? statHookEventHandler;
+
     private void Awake()
     {
         Log.Init(Logger);
@@ -34,10 +36,12 @@ public class CustomDifficulty : BaseUnityPlugin
         NetworkingAPI.RegisterMessageType<SyncConfigMessage>();
 
         // Hooks
+        statHookEventHandler = new RecalculateStatsAPI.StatHookEventHandler(RecalculateStatsAPI_GetStatCoefficients);
+
         RoR2.NetworkUser.onPostNetworkUserStart += NetworkUser_onPostNetworkUserStart;
         On.RoR2.UI.RuleChoiceController.Start += DifficultyConfigUI.RuleChoiceController_Start;
-
-        RecalculateStatsAPI.StatHookEventHandler getStatCoefficientsEventHandler = new RecalculateStatsAPI.StatHookEventHandler(RecalculateStatsAPI_GetStatCoefficients);
+        Run.onRunStartGlobal += Run_onRunStartGlobal;
+        Run.onRunDestroyGlobal += Run_onRunDestroyGlobal;
 
         // Difficulty
         DifficultyDef = new DifficultyDef(
@@ -50,26 +54,6 @@ public class CustomDifficulty : BaseUnityPlugin
             false
         );
         DifficultyIndex = DifficultyAPI.AddDifficulty(DifficultyDef);
-
-        // Events
-        Run.onRunStartGlobal += (Run run) =>
-        {
-            RecalculateStatsAPI.GetStatCoefficients -= getStatCoefficientsEventHandler; // Guard against duplicate hook
-
-            if (run.selectedDifficulty == DifficultyIndex)
-            {
-                if (NetworkServer.active) DifficultyConfig.SyncHostConfigToClients();
-
-                RecalculateStatsAPI.GetStatCoefficients += getStatCoefficientsEventHandler; // Hook
-            }
-        };
-        Run.onRunDestroyGlobal += (Run run) =>
-        {
-            if (run.selectedDifficulty == DifficultyIndex)
-            {
-                RecalculateStatsAPI.GetStatCoefficients -= getStatCoefficientsEventHandler; // Unhook
-            }
-        };
     }
 
     private void OnDestroy()
@@ -77,6 +61,13 @@ public class CustomDifficulty : BaseUnityPlugin
         // Cleanup logic
         RoR2.NetworkUser.onPostNetworkUserStart -= NetworkUser_onPostNetworkUserStart;
         On.RoR2.UI.RuleChoiceController.Start -= DifficultyConfigUI.RuleChoiceController_Start;
+        Run.onRunStartGlobal -= Run_onRunStartGlobal;
+        Run.onRunDestroyGlobal -= Run_onRunDestroyGlobal;
+
+        if (statHookEventHandler is not null)
+        {
+            RecalculateStatsAPI.GetStatCoefficients -= statHookEventHandler;
+        }
     }
 
     private void OnGUI()
@@ -134,6 +125,24 @@ public class CustomDifficulty : BaseUnityPlugin
                 float currentValue = accessor.Get(args);
                 accessor.Set(args, currentValue + kvp.Value);
             }
+        }
+    }
+
+    private void Run_onRunStartGlobal(Run run)
+    {
+        RecalculateStatsAPI.GetStatCoefficients -= statHookEventHandler; // Guard against duplicate hook
+        if (run.selectedDifficulty == DifficultyIndex)
+        {
+            if (NetworkServer.active) DifficultyConfig.SyncHostConfigToClients();
+            RecalculateStatsAPI.GetStatCoefficients += statHookEventHandler; // Hook
+        }
+    }
+
+    private void Run_onRunDestroyGlobal(Run run)
+    {
+        if (run.selectedDifficulty == DifficultyIndex)
+        {
+            RecalculateStatsAPI.GetStatCoefficients -= statHookEventHandler; // Unhook
         }
     }
 }

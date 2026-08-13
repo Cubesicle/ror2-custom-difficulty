@@ -1,24 +1,26 @@
+using System.Collections.Generic;
 using R2API.Networking.Interfaces;
 using UnityEngine.Networking;
 
 public class SyncConfigMessage : INetMessage
 {
+    private float scalingFactor;
+    private Dictionary<string, float> tempPlayerStats = new Dictionary<string, float>();
+    private Dictionary<string, float> tempEnemyStats = new Dictionary<string, float>();
+
     // Empty constructor required for R2API
     public SyncConfigMessage() { }
 
-    // Host only: packages the data to send over the internet
+    // Host only: packages the data to send over the network
     public void Serialize(NetworkWriter writer)
     {
-        // Read directly from the static DifficultyConfig class
         writer.Write(DifficultyConfig.ActiveScalingFactor);
-
         writer.WritePackedUInt32((uint)DifficultyConfig.ActivePlayerStats.Count);
         foreach (var kvp in DifficultyConfig.ActivePlayerStats)
         {
             writer.Write(kvp.Key);
             writer.Write(kvp.Value);
         }
-
         writer.WritePackedUInt32((uint)DifficultyConfig.ActiveEnemyStats.Count);
         foreach (var kvp in DifficultyConfig.ActiveEnemyStats)
         {
@@ -27,38 +29,32 @@ public class SyncConfigMessage : INetMessage
         }
     }
 
-    // Client only: unpacks the data when they receive it
+    // Unpacks incoming data into isolated temporary buffers
     public void Deserialize(NetworkReader reader)
     {
-        // Clear out the client's current active stats and overwrite them directly
-        DifficultyConfig.ActiveScalingFactor = reader.ReadSingle();
-
-        DifficultyConfig.ActivePlayerStats.Clear();
+        scalingFactor = reader.ReadSingle();
 
         uint pCount = reader.ReadPackedUInt32();
         for (int i = 0; i < pCount; i++)
         {
-            DifficultyConfig.ActivePlayerStats[reader.ReadString()] = reader.ReadSingle();
+            tempPlayerStats[reader.ReadString()] = reader.ReadSingle();
         }
-
-        DifficultyConfig.ActiveEnemyStats.Clear();
 
         uint eCount = reader.ReadPackedUInt32();
         for (int i = 0; i < eCount; i++)
         {
-            DifficultyConfig.ActiveEnemyStats[reader.ReadString()] = reader.ReadSingle();
+            tempEnemyStats[reader.ReadString()] = reader.ReadSingle();
         }
     }
 
-    // Client only: what happens after deserialization is finished
+    // Safely applies the data after deserialization completes
     public void OnReceived()
     {
+        // Prevent the host from accepting or applying client-sent sync configurations
         if (NetworkServer.active) return;
 
-        if (CustomDifficulty.DifficultyDef is { } def)
-        {
-            def.scalingValue = DifficultyConfig.ActiveScalingFactor;
-        }
+        // Atomically swap the dictionaries and update the difficulty definition
+        DifficultyConfig.ApplySyncedSettings(scalingFactor, tempPlayerStats, tempEnemyStats);
 
         Log.Info("Successfully synced custom difficulty stats from Host.");
     }

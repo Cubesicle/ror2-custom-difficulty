@@ -53,7 +53,7 @@ public static class DifficultyConfigUI
         string windowTitle = NetworkServer.active ? "Custom Difficulty Settings" : "Custom Difficulty Settings (Host - Read Only)";
 
         Rect windowRect = new Rect(Screen.width / 2 - 200, Screen.height / 2 - 250, 400, 500);
-        windowRect = GUI.Window(0, windowRect, DrawConfigWindow, windowTitle);
+        windowRect = GUI.Window(857312, windowRect, DrawConfigWindow, windowTitle);
     }
 
     public static void Update()
@@ -81,20 +81,20 @@ public static class DifficultyConfigUI
     {
         orig(self);
 
-        // 1. Check for an existing EventTrigger, add one only if it doesn't exist
+        // Check for an existing EventTrigger, add one only if it doesn't exist
         var eventTrigger = self.gameObject.GetComponent<UnityEngine.EventSystems.EventTrigger>();
         if (eventTrigger is null)
         {
             eventTrigger = self.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
         }
 
-        // 2. Create a new trigger entry specifically for clicks
+        // Create a new trigger entry specifically for clicks
         var clickEntry = new UnityEngine.EventSystems.EventTrigger.Entry
         {
             eventID = UnityEngine.EventSystems.EventTriggerType.PointerClick
         };
 
-        // 3. Bind an anonymous lambda function to the callback
+        // Bind an anonymous lambda function to the callback
         clickEntry.callback.AddListener((eventData) =>
         {
             if (eventData as UnityEngine.EventSystems.PointerEventData is not { } pointerData) return;
@@ -109,7 +109,7 @@ public static class DifficultyConfigUI
             }
         });
 
-        // 4. Register the entry to the trigger
+        // Register the entry to the trigger
         eventTrigger.triggers.Add(clickEntry);
     }
 
