@@ -150,7 +150,7 @@ public static class DifficultyConfigUI
 
         foreach (var kvp in configKeys)
         {
-            string statName = kvp.Key.Name;
+            string statName = kvp.Key;
 
             if (!string.IsNullOrEmpty(searchQuery) && !statName.ToLower().Contains(searchQuery.ToLower()))
             {

@@ -11,8 +11,8 @@ public static class DifficultyConfig
 
     // Saved settings on the player's local machine
     public static ConfigEntry<float>? ScalingFactorConfig;
-    public static Dictionary<FieldInfo, ConfigEntry<float>> PlayerConfigs = new Dictionary<FieldInfo, ConfigEntry<float>>();
-    public static Dictionary<FieldInfo, ConfigEntry<float>> EnemyConfigs = new Dictionary<FieldInfo, ConfigEntry<float>>();
+    public static Dictionary<string, ConfigEntry<float>> PlayerConfigs = new Dictionary<string, ConfigEntry<float>>();
+    public static Dictionary<string, ConfigEntry<float>> EnemyConfigs = new Dictionary<string, ConfigEntry<float>>();
 
     // Active settings used purely for the current multiplayer run
     public static float ActiveScalingFactor;
@@ -59,10 +59,10 @@ public static class DifficultyConfig
                 string description = $"Amount ADDED to {field.Name}. (Note: All fields are strictly additive. For 'mult' fields, 1.0 adds +100%.)";
 
                 var playerConfig = configFile.Bind("Player Stats", field.Name, 0f, description);
-                PlayerConfigs.Add(field, playerConfig);
+                PlayerConfigs.Add(field.Name, playerConfig);
 
                 var enemyConfig = configFile.Bind("Enemy Stats", field.Name, 0f, description);
-                EnemyConfigs.Add(field, enemyConfig);
+                EnemyConfigs.Add(field.Name, enemyConfig);
             }
         }
     }
@@ -80,8 +80,8 @@ public static class DifficultyConfig
         ActivePlayerStats.Clear();
         ActiveEnemyStats.Clear();
 
-        foreach (var kvp in PlayerConfigs) ActivePlayerStats[kvp.Key.Name] = kvp.Value.Value;
-        foreach (var kvp in EnemyConfigs) ActiveEnemyStats[kvp.Key.Name] = kvp.Value.Value;
+        foreach (var kvp in PlayerConfigs) ActivePlayerStats[kvp.Key] = kvp.Value.Value;
+        foreach (var kvp in EnemyConfigs) ActiveEnemyStats[kvp.Key] = kvp.Value.Value;
 
         new SyncConfigMessage().Send(R2API.Networking.NetworkDestination.Clients);
         Log.Info("Host updated custom difficulty stats and synced to clients.");
