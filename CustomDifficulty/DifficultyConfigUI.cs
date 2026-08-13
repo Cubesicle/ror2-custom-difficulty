@@ -3,7 +3,6 @@ using RoR2.UI;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.Networking;
 
 public static class DifficultyConfigUI
 {
@@ -18,7 +17,7 @@ public static class DifficultyConfigUI
             if (_show == false && value == true)
             {
                 // Only the host needs to reload from storage
-                if (NetworkServer.active)
+                if (isHost())
                 {
                     DifficultyConfig.Reload();
                     textBuffers.Clear(); // Force the text boxes to refresh and read the new values
@@ -28,11 +27,7 @@ public static class DifficultyConfigUI
             // Check if the menu is actively being closed
             if (_show == true && value == false)
             {
-                if (NetworkServer.active)
-                {
-                    DifficultyConfig.Save();
-                    DifficultyConfig.SyncHostConfigToClients();
-                }
+                DifficultyConfig.Save();
             }
 
             _show = value;
@@ -50,7 +45,7 @@ public static class DifficultyConfigUI
         if (!show) return;
 
         // Change the title based on who is looking at it
-        string windowTitle = NetworkServer.active ? "Custom Difficulty Settings" : "Custom Difficulty Settings (Host - Read Only)";
+        string windowTitle = isHost() ? "Custom Difficulty Settings" : "Custom Difficulty Settings (Host - Read Only)";
 
         Rect windowRect = new Rect(Screen.width / 2 - 200, Screen.height / 2 - 250, 400, 500);
         windowRect = GUI.Window(857312, windowRect, DrawConfigWindow, windowTitle);
@@ -76,7 +71,7 @@ public static class DifficultyConfigUI
         {
             DifficultyIndex clickedDifficulty = self.choiceDef.difficultyIndex;
 
-            if (NetworkServer.active)
+            if (isHost())
             {
                 // If the same difficulty is clicked on for the host, the difficulty changes, so hide the UI.
                 show = (clickedDifficulty == CustomDifficulty.DifficultyIndex && PreGameController.instance.readOnlyRuleBook.FindDifficulty() != CustomDifficulty.DifficultyIndex);
@@ -90,8 +85,6 @@ public static class DifficultyConfigUI
 
     private static void DrawConfigWindow(int windowID)
     {
-        bool isHost = NetworkServer.active;
-
         GUILayout.BeginArea(new Rect(10, 25, 380, 465));
 
         // Difficulty scaling factor
@@ -99,18 +92,18 @@ public static class DifficultyConfigUI
         GUILayout.Label("Scaling Factor (Time Diff.)", GUILayout.Width(200));
 
         // Determine value to show
-        float currentScaling = isHost ? DifficultyConfig.ScalingFactorConfig!.Value : DifficultyConfig.ActiveScalingFactor;
+        float currentScaling = isHost() ? DifficultyConfig.ScalingFactorConfig!.Value : DifficultyConfig.ActiveStats.ScalingFactor;
 
-        if (!textBuffers.ContainsKey("ScalingFactor") || !isHost)
+        if (!textBuffers.ContainsKey("ScalingFactor") || !isHost())
         {
             textBuffers["ScalingFactor"] = currentScaling.ToString();
         }
 
-        GUI.enabled = isHost; // Read-only lock for clients
+        GUI.enabled = isHost(); // Read-only lock for clients
         textBuffers["ScalingFactor"] = GUILayout.TextField(textBuffers["ScalingFactor"], GUILayout.Width(100));
         GUI.enabled = true;
 
-        if (isHost && float.TryParse(textBuffers["ScalingFactor"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedScaling))
+        if (isHost() && float.TryParse(textBuffers["ScalingFactor"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedScaling))
         {
             DifficultyConfig.ScalingFactorConfig!.Value = parsedScaling;
         }
@@ -146,7 +139,7 @@ public static class DifficultyConfigUI
         var configKeys = selectedTab == 0 ? DifficultyConfig.PlayerConfigs : DifficultyConfig.EnemyConfigs;
 
         // But we need the Active dictionary to show clients the synced values
-        var syncedStats = selectedTab == 0 ? DifficultyConfig.ActivePlayerStats : DifficultyConfig.ActiveEnemyStats;
+        var syncedStats = selectedTab == 0 ? DifficultyConfig.ActiveStats.Player : DifficultyConfig.ActiveStats.Enemy;
 
         foreach (var kvp in configKeys)
         {
@@ -160,7 +153,7 @@ public static class DifficultyConfigUI
             string bufferId = (selectedTab == 0 ? "P_" : "E_") + statName;
 
             float displayValue = 0f;
-            if (isHost)
+            if (isHost())
             {
                 displayValue = kvp.Value.Value;
             }
@@ -173,7 +166,7 @@ public static class DifficultyConfigUI
             {
                 textBuffers[bufferId] = displayValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
-            else if (!isHost)
+            else if (!isHost())
             {
                 if (float.TryParse(existingBuffer, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedBuffer) && parsedBuffer != displayValue)
                 {
@@ -191,11 +184,11 @@ public static class DifficultyConfigUI
 
             GUILayout.Label(statName, GUILayout.Width(200));
 
-            GUI.enabled = isHost;
+            GUI.enabled = isHost();
             textBuffers[bufferId] = GUILayout.TextField(textBuffers[bufferId], GUILayout.Width(100));
             GUI.enabled = true;
 
-            if (isHost)
+            if (isHost())
             {
                 if (float.TryParse(textBuffers[bufferId], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedValue))
                 {
@@ -210,11 +203,16 @@ public static class DifficultyConfigUI
         GUILayout.EndScrollView();
         GUILayout.Space(15);
 
-        if (GUILayout.Button(NetworkServer.active ? "Save & Close" : "Close", GUILayout.Height(30)))
+        if (GUILayout.Button(isHost() ? "Save & Close" : "Close", GUILayout.Height(30)))
         {
             show = false;
         }
 
         GUILayout.EndArea();
+    }
+
+    private static bool isHost()
+    {
+        return UnityEngine.Networking.NetworkServer.active;
     }
 }

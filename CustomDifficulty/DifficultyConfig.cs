@@ -7,6 +7,13 @@ using System.Linq.Expressions;
 
 public static class DifficultyConfig
 {
+    public class Stats
+    {
+        public float ScalingFactor;
+        public Dictionary<string, float> Player = new Dictionary<string, float>();
+        public Dictionary<string, float> Enemy = new Dictionary<string, float>();
+    }
+
     public static ConfigFile? configFile { private get; set; }
 
     // Saved settings on the player's local machine
@@ -15,9 +22,7 @@ public static class DifficultyConfig
     public static Dictionary<string, ConfigEntry<float>> EnemyConfigs = new Dictionary<string, ConfigEntry<float>>();
 
     // Active settings used purely for the current multiplayer run
-    public static float ActiveScalingFactor;
-    public static Dictionary<string, float> ActivePlayerStats = new Dictionary<string, float>();
-    public static Dictionary<string, float> ActiveEnemyStats = new Dictionary<string, float>();
+    public static Stats ActiveStats = new();
 
     // Delegates and accessors
     public delegate float GetStatDelegate(RecalculateStatsAPI.StatHookEventArgs args);
@@ -67,35 +72,48 @@ public static class DifficultyConfig
         }
     }
 
-    public static void Save() => configFile?.Save();
-    public static void Reload() => configFile?.Reload();
-
-    public static void SyncHostConfigToClients()
+    public static void Save()
     {
-        if (ScalingFactorConfig is null || CustomDifficulty.DifficultyDef is null) return;
+        if (!isHost()) return;
 
-        ActiveScalingFactor = ScalingFactorConfig.Value;
-        CustomDifficulty.DifficultyDef.scalingValue = ActiveScalingFactor;
+        configFile?.Save();
+        SyncHostConfigToClients();
+    }
 
-        ActivePlayerStats.Clear();
-        ActiveEnemyStats.Clear();
+    public static void Reload()
+    {
+        if (!isHost()) return;
 
-        foreach (var kvp in PlayerConfigs) ActivePlayerStats[kvp.Key] = kvp.Value.Value;
-        foreach (var kvp in EnemyConfigs) ActiveEnemyStats[kvp.Key] = kvp.Value.Value;
+        configFile?.Reload();
+        SyncHostConfigToClients();
+    }
+
+    public static void ApplySyncedSettings(Stats newStats)
+    {
+        ActiveStats = newStats;
+        if (CustomDifficulty.DifficultyDef is { } def)
+        {
+            def.scalingValue = ActiveStats.ScalingFactor;
+        }
+    }
+
+    private static void SyncHostConfigToClients()
+    {
+        if (!isHost() || ScalingFactorConfig is null) return;
+
+        Stats newStats = new Stats { ScalingFactor = ScalingFactorConfig.Value };
+        foreach (var kvp in PlayerConfigs) newStats.Player[kvp.Key] = kvp.Value.Value;
+        foreach (var kvp in EnemyConfigs) newStats.Enemy[kvp.Key] = kvp.Value.Value;
+
+        ApplySyncedSettings(newStats);
 
         new SyncConfigMessage().Send(R2API.Networking.NetworkDestination.Clients);
+
         Log.Info("Host updated custom difficulty stats and synced to clients.");
     }
 
-    public static void ApplySyncedSettings(float scalingFactor, Dictionary<string, float> newPlayerStats, Dictionary<string, float> newEnemyStats)
+    private static bool isHost()
     {
-        ActiveScalingFactor = scalingFactor;
-        if (CustomDifficulty.DifficultyDef is { } def)
-        {
-            def.scalingValue = ActiveScalingFactor;
-        }
-
-        ActivePlayerStats = newPlayerStats;
-        ActiveEnemyStats = newEnemyStats;
+        return UnityEngine.Networking.NetworkServer.active;
     }
 }

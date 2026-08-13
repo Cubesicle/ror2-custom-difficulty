@@ -4,7 +4,6 @@ using R2API.Networking;
 using R2API.Utils;
 using RoR2;
 using System.Collections.Generic;
-using UnityEngine.Networking;
 
 [BepInDependency(DifficultyAPI.PluginGUID)]
 [BepInDependency(LanguageAPI.PluginGUID)]
@@ -29,6 +28,7 @@ public class CustomDifficulty : BaseUnityPlugin
         Log.Init(Logger);
 
         // Config
+        Config.SaveOnConfigSet = false;
         DifficultyConfig.configFile = Config;
         DifficultyConfig.Bind();
 
@@ -82,11 +82,7 @@ public class CustomDifficulty : BaseUnityPlugin
 
     private void NetworkUser_onPostNetworkUserStart(NetworkUser networkUser)
     {
-        // If we are the server, and the person joining is a client, push the stats to them
-        if (NetworkServer.active && !networkUser.isLocalPlayer)
-        {
-            DifficultyConfig.SyncHostConfigToClients();
-        }
+        DifficultyConfig.Reload();
     }
 
     private void RecalculateStatsAPI_GetStatCoefficients(CharacterBody sender, RecalculateStatsAPI.StatHookEventArgs args)
@@ -98,12 +94,12 @@ public class CustomDifficulty : BaseUnityPlugin
         if (sender.isPlayerControlled)
         {
             // Human players get the Player Stats
-            activeStats = DifficultyConfig.ActivePlayerStats;
+            activeStats = DifficultyConfig.ActiveStats.Player;
         }
         else if (sender.teamComponent.teamIndex != TeamIndex.Player)
         {
             // Entities not on the player team get the Enemy Stats
-            activeStats = DifficultyConfig.ActiveEnemyStats;
+            activeStats = DifficultyConfig.ActiveStats.Enemy;
         }
         else
         {
@@ -133,7 +129,7 @@ public class CustomDifficulty : BaseUnityPlugin
         RecalculateStatsAPI.GetStatCoefficients -= statHookEventHandler; // Guard against duplicate hook
         if (run.selectedDifficulty == DifficultyIndex)
         {
-            if (NetworkServer.active) DifficultyConfig.SyncHostConfigToClients();
+            DifficultyConfig.Reload();
             RecalculateStatsAPI.GetStatCoefficients += statHookEventHandler; // Hook
         }
     }
