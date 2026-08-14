@@ -26,9 +26,9 @@ public class SyncConfigMessage : INetMessage
             // If the stat is exactly 0f, adding 0f in RecalculateStatsAPI does nothing. 
             // Skipping it entirely means we don't send useless data over the network, 
             // which prevents hitting Unity's ~1,100 byte message limit.
-            if (DifficultyConfig.ActiveStats.Player.TryGetValue(key, out float val) && val != 0f)
+            if (DifficultyConfig.ActiveStats.Player.TryGetValue(key, out DifficultyConfig.Stat val) && !val.isDefault())
             {
-                playerStatsToSend.Add((i, val));
+                playerStatsToSend.Add((i, val.Value));
             }
         }
 
@@ -46,9 +46,9 @@ public class SyncConfigMessage : INetMessage
         for (ushort i = 0; i < DifficultyConfig.StatNames.Count; i++)
         {
             string key = DifficultyConfig.StatNames[i];
-            if (DifficultyConfig.ActiveStats.Enemy.TryGetValue(key, out float val) && val != 0f)
+            if (DifficultyConfig.ActiveStats.Enemy.TryGetValue(key, out DifficultyConfig.Stat val) && !val.isDefault())
             {
-                enemyStatsToSend.Add((i, val));
+                enemyStatsToSend.Add((i, val.Value));
             }
         }
 
@@ -77,7 +77,9 @@ public class SyncConfigMessage : INetMessage
             // The bounds check (index < Count) ensures a mismatched mod version doesn't crash the client.
             if (index < DifficultyConfig.StatNames.Count)
             {
-                tempStats.Player[DifficultyConfig.StatNames[index]] = val;
+                string statName = DifficultyConfig.StatNames[index];
+                DifficultyConfig.Stat newStat = new DifficultyConfig.Stat(DifficultyConfig.Stat.typeFromString(statName), val);
+                tempStats.Player[DifficultyConfig.StatNames[index]] = newStat;
             }
         }
 
@@ -90,7 +92,9 @@ public class SyncConfigMessage : INetMessage
 
             if (index < DifficultyConfig.StatNames.Count)
             {
-                tempStats.Enemy[DifficultyConfig.StatNames[index]] = val;
+                string statName = DifficultyConfig.StatNames[index];
+                DifficultyConfig.Stat newStat = new DifficultyConfig.Stat(DifficultyConfig.Stat.typeFromString(statName), val);
+                tempStats.Enemy[DifficultyConfig.StatNames[index]] = newStat;
             }
         }
     }

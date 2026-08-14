@@ -1,6 +1,7 @@
 using BepInEx.Configuration;
 using R2API;
 using R2API.Networking.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
@@ -8,11 +9,41 @@ using System.Linq.Expressions;
 
 public static class DifficultyConfig
 {
+    // The enum can be casted to a float to get the default value.
+    public enum StatType
+    {
+        Adder = 0,
+        Multiplier = 1
+    }
+
+    public class Stat
+    {
+        public StatType Type { get; private set; }
+        public float Value;
+
+        public Stat(StatType statType, float value)
+        {
+            Type = statType;
+            Value = value;
+        }
+
+        public static StatType typeFromString(string str)
+        {
+            // Assume that all stat names end with either "add" or "mult" lol.
+            return str.EndsWith("add", StringComparison.OrdinalIgnoreCase) ? StatType.Adder : StatType.Multiplier;
+        }
+
+        public bool isDefault()
+        {
+            return Value == (float)Type;
+        }
+    }
+
     public class Stats
     {
         public float ScalingFactor;
-        public Dictionary<string, float> Player = new Dictionary<string, float>();
-        public Dictionary<string, float> Enemy = new Dictionary<string, float>();
+        public Dictionary<string, Stat> Player = new Dictionary<string, Stat>();
+        public Dictionary<string, Stat> Enemy = new Dictionary<string, Stat>();
     }
 
     public static ConfigFile? configFile { private get; set; }
@@ -77,12 +108,14 @@ public static class DifficultyConfig
                 var setter = Expression.Lambda<SetStatDelegate>(Expression.Assign(fieldAccess, valueParam), argsParam, valueParam).Compile();
                 Accessors[field.Name] = new StatAccessor { Get = getter, Set = setter };
 
-                string description = $"Amount ADDED to {field.Name}. (Note: All fields are strictly additive. For 'mult' fields, 1.0 adds +100%.)";
+                StatType statType = Stat.typeFromString(field.Name);
+                string operation = statType == StatType.Adder ? "ADDED" : "MULTIPLIED";
+                string description = $"Amount {operation} to {field.Name}.";
 
-                var playerConfig = configFile.Bind("Player Stats", field.Name, 0f, description);
+                var playerConfig = configFile.Bind("Player Stats", field.Name, (float)statType, description);
                 PlayerConfigs.Add(field.Name, playerConfig);
 
-                var enemyConfig = configFile.Bind("Enemy Stats", field.Name, 0f, description);
+                var enemyConfig = configFile.Bind("Enemy Stats", field.Name, (float)statType, description);
                 EnemyConfigs.Add(field.Name, enemyConfig);
             }
         }
@@ -118,8 +151,8 @@ public static class DifficultyConfig
         if (!isHost() || ScalingFactorConfig is null) return;
 
         Stats newStats = new Stats { ScalingFactor = ScalingFactorConfig.Value };
-        foreach (var kvp in PlayerConfigs) newStats.Player[kvp.Key] = kvp.Value.Value;
-        foreach (var kvp in EnemyConfigs) newStats.Enemy[kvp.Key] = kvp.Value.Value;
+        foreach (var kvp in PlayerConfigs) newStats.Player[kvp.Key] = new Stat(Stat.typeFromString(kvp.Key), kvp.Value.Value);
+        foreach (var kvp in EnemyConfigs) newStats.Enemy[kvp.Key] = new Stat(Stat.typeFromString(kvp.Key), kvp.Value.Value);
 
         ApplySyncedSettings(newStats);
 

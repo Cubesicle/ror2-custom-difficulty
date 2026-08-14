@@ -89,7 +89,7 @@ public class CustomDifficulty : BaseUnityPlugin
     {
         if (!sender || !sender.teamComponent) return;
 
-        Dictionary<string, float>? activeStats = null;
+        Dictionary<string, DifficultyConfig.Stat>? activeStats = null;
 
         if (sender.isPlayerControlled)
         {
@@ -111,15 +111,15 @@ public class CustomDifficulty : BaseUnityPlugin
         // Iterate over the synced active stats directly
         foreach (var kvp in activeStats)
         {
-            // If the stat value is 0, skip it to save processing time
-            if (kvp.Value == 0f) continue;
+            // If the stat value is the default value, skip it to save processing time
+            if (kvp.Value.isDefault()) continue;
 
             // Look up the pre-compiled delegate by the field's name
             if (DifficultyConfig.Accessors.TryGetValue(kvp.Key, out var accessor))
             {
                 // Execute delegates
                 float currentValue = accessor.Get(args);
-                accessor.Set(args, currentValue + kvp.Value);
+                accessor.Set(args, kvp.Value.Type == DifficultyConfig.StatType.Adder ? currentValue + kvp.Value.Value : currentValue * kvp.Value.Value);
             }
         }
     }

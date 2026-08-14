@@ -146,14 +146,17 @@ public static class DifficultyConfigUI
 
             string bufferId = (selectedTab == 0 ? "P_" : "E_") + statName;
 
-            float displayValue = 0f;
+            float displayValue = (float)DifficultyConfig.Stat.typeFromString(statName);
             if (isHost())
             {
                 displayValue = kvp.Value.Value;
             }
             else
             {
-                syncedStats.TryGetValue(statName, out displayValue);
+                if (syncedStats.TryGetValue(statName, out DifficultyConfig.Stat displayStat))
+                {
+                    displayValue = displayStat.Value;
+                }
             }
 
             if (!textBuffers.TryGetValue(bufferId, out string existingBuffer))
