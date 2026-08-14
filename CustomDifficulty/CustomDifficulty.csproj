@@ -26,6 +26,8 @@
           <PrivateAssets>all</PrivateAssets>
         </PackageReference>
 
+        <PackageReference Include="protobuf-net" Version="3.3.8" />
+
         <PackageReference Include="R2API.Difficulty" Version="1.1.2" />
         <PackageReference Include="R2API.Language" Version="1.0.*" />
         <PackageReference Include="R2API.Networking" Version="1.0.4" />

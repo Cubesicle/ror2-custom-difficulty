@@ -1,4 +1,5 @@
 using BepInEx.Configuration;
+using ProtoBuf;
 using R2API;
 using R2API.Networking.Interfaces;
 using System.Collections.Generic;
@@ -8,21 +9,18 @@ using System.Linq.Expressions;
 
 public static class DifficultyConfig
 {
+    [ProtoContract]
     public class Stats
     {
+        [ProtoMember(1)]
         public float ScalingFactor;
+        [ProtoMember(2)]
         public Dictionary<string, float> Player = new Dictionary<string, float>();
+        [ProtoMember(3)]
         public Dictionary<string, float> Enemy = new Dictionary<string, float>();
     }
 
     public static ConfigFile? configFile { private get; set; }
-
-    // We use a List to maintain a strict, ordered record of stat field names.
-    // Because C# Reflection (GetFields) does NOT guarantee a deterministic order 
-    // across different machines or OS environments, we explicitly sort the fields 
-    // alphabetically. This ensures both the Host and the Client generate this exact 
-    // same list in the exact same order to prevent network desyncs.
-    public static List<string> StatNames = new List<string>();
 
     // Saved settings on the player's local machine
     public static ConfigEntry<float>? ScalingFactorConfig;
@@ -66,9 +64,6 @@ public static class DifficultyConfig
         {
             if (field.FieldType == typeof(float))
             {
-                // Add the field name to our ordered list as we iterate.
-                StatNames.Add(field.Name);
-
                 var argsParam = Expression.Parameter(typeof(RecalculateStatsAPI.StatHookEventArgs), "args");
                 var valueParam = Expression.Parameter(typeof(float), "value");
                 var fieldAccess = Expression.Field(argsParam, field);
