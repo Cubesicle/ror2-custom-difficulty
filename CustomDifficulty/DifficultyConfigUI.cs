@@ -188,7 +188,11 @@ public static class DifficultyConfigUI
             GUILayout.BeginHorizontal();
             Color originalColor = GUI.contentColor;
 
-            if (displayValue != 0f)
+            // Dynamically calculate the default value for this specific stat
+            float defaultValue = (float)DifficultyConfig.Stat.typeFromString(statName);
+
+            // Compare the current display value against the actual default
+            if (displayValue != defaultValue)
             {
                 GUI.contentColor = Color.yellow;
             }
@@ -213,7 +217,6 @@ public static class DifficultyConfigUI
                 else if (!isFocused)
                 {
                     // Revert to the stat's default value when unfocused and blank/invalid
-                    float defaultValue = (float)DifficultyConfig.Stat.typeFromString(statName);
                     kvp.Value.Value = defaultValue;
                     textBuffers[bufferId] = defaultValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 }
