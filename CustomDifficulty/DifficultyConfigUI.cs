@@ -93,13 +93,27 @@ public static class DifficultyConfigUI
             textBuffers["ScalingFactor"] = currentScaling.ToString();
         }
 
+        // Assign a unique control name BEFORE drawing the TextField
+        GUI.SetNextControlName("ScalingFactor");
         GUI.enabled = isHost(); // Read-only lock for clients
         textBuffers["ScalingFactor"] = GUILayout.TextField(textBuffers["ScalingFactor"], GUILayout.Width(100));
         GUI.enabled = true;
 
-        if (isHost() && float.TryParse(textBuffers["ScalingFactor"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedScaling))
+        if (isHost())
         {
-            DifficultyConfig.ScalingFactorConfig!.Value = parsedScaling;
+            // Check if the user is currently typing in this specific box
+            bool isFocused = GUI.GetNameOfFocusedControl() == "ScalingFactor";
+
+            if (float.TryParse(textBuffers["ScalingFactor"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedScaling))
+            {
+                DifficultyConfig.ScalingFactorConfig!.Value = parsedScaling;
+            }
+            else if (!isFocused)
+            {
+                // Revert to default (1.0) when unfocused and blank/invalid
+                DifficultyConfig.ScalingFactorConfig!.Value = 1f;
+                textBuffers["ScalingFactor"] = "1";
+            }
         }
         GUILayout.EndHorizontal();
 
@@ -181,15 +195,27 @@ public static class DifficultyConfigUI
 
             GUILayout.Label(statName, GUILayout.Width(200));
 
+            // Assign the unique bufferId as the control name
+            GUI.SetNextControlName(bufferId);
             GUI.enabled = isHost();
             textBuffers[bufferId] = GUILayout.TextField(textBuffers[bufferId], GUILayout.Width(100));
             GUI.enabled = true;
 
             if (isHost())
             {
+                // Check if the user is currently typing in this specific box
+                bool isFocused = GUI.GetNameOfFocusedControl() == bufferId;
+
                 if (float.TryParse(textBuffers[bufferId], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedValue))
                 {
                     kvp.Value.Value = parsedValue;
+                }
+                else if (!isFocused)
+                {
+                    // Revert to the stat's default value when unfocused and blank/invalid
+                    float defaultValue = (float)DifficultyConfig.Stat.typeFromString(statName);
+                    kvp.Value.Value = defaultValue;
+                    textBuffers[bufferId] = defaultValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 }
             }
 
