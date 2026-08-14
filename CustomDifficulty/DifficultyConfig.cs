@@ -1,11 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using BepInEx.Configuration;
 using R2API;
 using R2API.Networking.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Linq;
-using System.Linq.Expressions;
 
 public static class DifficultyConfig
 {

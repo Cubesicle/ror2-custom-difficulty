@@ -1,7 +1,7 @@
+using System.Collections.Generic;
 using R2API.Networking.Interfaces;
 using RoR2;
 using UnityEngine.Networking;
-using System.Collections.Generic;
 
 public class SyncConfigMessage : INetMessage
 {

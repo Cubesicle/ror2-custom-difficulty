@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using RoR2;
 using RoR2.UI;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 

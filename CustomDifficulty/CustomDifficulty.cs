@@ -1,9 +1,9 @@
+using System.Collections.Generic;
 using BepInEx;
 using R2API;
 using R2API.Networking;
 using R2API.Utils;
 using RoR2;
-using System.Collections.Generic;
 
 [BepInDependency(DifficultyAPI.PluginGUID)]
 [BepInDependency(LanguageAPI.PluginGUID)]

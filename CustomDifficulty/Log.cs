@@ -1,6 +1,6 @@
-﻿using BepInEx.Logging;
+﻿using System.IO;
 using System.Runtime.CompilerServices;
-using System.IO;
+using BepInEx.Logging;
 
 internal static class Log
 {
