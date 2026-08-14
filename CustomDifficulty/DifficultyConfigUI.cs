@@ -8,7 +8,7 @@ public static class DifficultyConfigUI
 {
     private static bool _show = false;
 
-    private static bool show
+    private static bool Show
     {
         get { return _show; }
         set
@@ -17,7 +17,7 @@ public static class DifficultyConfigUI
             if (_show == false && value == true)
             {
                 // Only the host needs to reload from storage
-                if (isHost())
+                if (IsHost())
                 {
                     DifficultyConfig.Reload();
                     textBuffers.Clear(); // Force the text boxes to refresh and read the new values
@@ -38,25 +38,25 @@ public static class DifficultyConfigUI
     private static int selectedTab = 0; // 0 = Player, 1 = Enemy
     private static string searchQuery = "";
 
-    private static Dictionary<string, string> textBuffers = new Dictionary<string, string>();
+    private static readonly Dictionary<string, string> textBuffers = [];
 
     public static void OnGUI()
     {
-        if (!show) return;
+        if (!Show) return;
 
         // Change the title based on who is looking at it
-        string windowTitle = isHost() ? "Custom Difficulty Settings" : "Custom Difficulty Settings (Host - Read Only)";
+        string windowTitle = IsHost() ? "Custom Difficulty Settings" : "Custom Difficulty Settings (Host - Read Only)";
 
-        Rect windowRect = new Rect(Screen.width / 2 - 200, Screen.height / 2 - 250, 400, 500);
+        Rect windowRect = new(Screen.width / 2 - 200, Screen.height / 2 - 250, 400, 500);
         windowRect = GUI.Window(857312, windowRect, DrawConfigWindow, windowTitle);
     }
 
     public static void Update()
     {
-        if (!show) return;
+        if (!Show) return;
 
         // If we are no longer in the lobby, close the menu and stop checking
-        if (SceneManager.GetActiveScene().name != "lobby") show = false;
+        if (SceneManager.GetActiveScene().name != "lobby") Show = false;
     }
 
     public static void RuleChoiceController_OnClick(On.RoR2.UI.RuleChoiceController.orig_OnClick orig, RuleChoiceController self)
@@ -74,7 +74,7 @@ public static class DifficultyConfigUI
             return;
         }
 
-        show = self.choiceDef.difficultyIndex == CustomDifficulty.DifficultyIndex && preGameRuleVoteController.IsChoiceVoted(self.choiceDef);
+        Show = self.choiceDef.difficultyIndex == CustomDifficulty.DifficultyIndex && preGameRuleVoteController.IsChoiceVoted(self.choiceDef);
     }
 
     private static void DrawConfigWindow(int windowID)
@@ -86,20 +86,20 @@ public static class DifficultyConfigUI
         GUILayout.Label("Scaling Factor (Time Diff.)", GUILayout.Width(200));
 
         // Determine value to show
-        float currentScaling = isHost() ? DifficultyConfig.ScalingFactorConfig!.Value : DifficultyConfig.ActiveStats.ScalingFactor;
+        float currentScaling = IsHost() ? DifficultyConfig.ScalingFactorConfig!.Value : DifficultyConfig.ActiveStats.ScalingFactor;
 
-        if (!textBuffers.ContainsKey("ScalingFactor") || !isHost())
+        if (!textBuffers.ContainsKey("ScalingFactor") || !IsHost())
         {
             textBuffers["ScalingFactor"] = currentScaling.ToString();
         }
 
         // Assign a unique control name BEFORE drawing the TextField
         GUI.SetNextControlName("ScalingFactor");
-        GUI.enabled = isHost(); // Read-only lock for clients
+        GUI.enabled = IsHost(); // Read-only lock for clients
         textBuffers["ScalingFactor"] = GUILayout.TextField(textBuffers["ScalingFactor"], GUILayout.Width(100));
         GUI.enabled = true;
 
-        if (isHost())
+        if (IsHost())
         {
             // Check if the user is currently typing in this specific box
             bool isFocused = GUI.GetNameOfFocusedControl() == "ScalingFactor";
@@ -160,8 +160,8 @@ public static class DifficultyConfigUI
 
             string bufferId = (selectedTab == 0 ? "P_" : "E_") + statName;
 
-            float displayValue = (float)DifficultyConfig.Stat.typeFromString(statName);
-            if (isHost())
+            float displayValue = (float)DifficultyConfig.Stat.TypeFromString(statName);
+            if (IsHost())
             {
                 displayValue = kvp.Value.Value;
             }
@@ -177,7 +177,7 @@ public static class DifficultyConfigUI
             {
                 textBuffers[bufferId] = displayValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
-            else if (!isHost())
+            else if (!IsHost())
             {
                 if (float.TryParse(existingBuffer, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedBuffer) && parsedBuffer != displayValue)
                 {
@@ -189,7 +189,7 @@ public static class DifficultyConfigUI
             Color originalColor = GUI.contentColor;
 
             // Dynamically calculate the default value for this specific stat
-            float defaultValue = (float)DifficultyConfig.Stat.typeFromString(statName);
+            float defaultValue = (float)DifficultyConfig.Stat.TypeFromString(statName);
 
             // Compare the current display value against the actual default
             if (displayValue != defaultValue)
@@ -201,11 +201,11 @@ public static class DifficultyConfigUI
 
             // Assign the unique bufferId as the control name
             GUI.SetNextControlName(bufferId);
-            GUI.enabled = isHost();
+            GUI.enabled = IsHost();
             textBuffers[bufferId] = GUILayout.TextField(textBuffers[bufferId], GUILayout.Width(100));
             GUI.enabled = true;
 
-            if (isHost())
+            if (IsHost())
             {
                 // Check if the user is currently typing in this specific box
                 bool isFocused = GUI.GetNameOfFocusedControl() == bufferId;
@@ -229,15 +229,15 @@ public static class DifficultyConfigUI
         GUILayout.EndScrollView();
         GUILayout.Space(15);
 
-        if (GUILayout.Button(isHost() ? "Save & Close" : "Close", GUILayout.Height(30)))
+        if (GUILayout.Button(IsHost() ? "Save & Close" : "Close", GUILayout.Height(30)))
         {
-            show = false;
+            Show = false;
         }
 
         GUILayout.EndArea();
     }
 
-    private static bool isHost()
+    private static bool IsHost()
     {
         return UnityEngine.Networking.NetworkServer.active;
     }

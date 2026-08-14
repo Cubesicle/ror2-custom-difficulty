@@ -29,7 +29,7 @@ public class CustomDifficulty : BaseUnityPlugin
 
         // Config
         Config.SaveOnConfigSet = false;
-        DifficultyConfig.configFile = Config;
+        DifficultyConfig.ConfigFile = Config;
         DifficultyConfig.Bind();
 
         // Networking
@@ -38,7 +38,7 @@ public class CustomDifficulty : BaseUnityPlugin
         // Hooks
         statHookEventHandler = new RecalculateStatsAPI.StatHookEventHandler(RecalculateStatsAPI_GetStatCoefficients);
 
-        RoR2.NetworkUser.onPostNetworkUserStart += NetworkUser_onPostNetworkUserStart;
+        NetworkUser.onPostNetworkUserStart += NetworkUser_onPostNetworkUserStart;
         On.RoR2.UI.RuleChoiceController.OnClick += DifficultyConfigUI.RuleChoiceController_OnClick;
         Run.onRunStartGlobal += Run_onRunStartGlobal;
         Run.onRunDestroyGlobal += Run_onRunDestroyGlobal;
@@ -59,7 +59,7 @@ public class CustomDifficulty : BaseUnityPlugin
     private void OnDestroy()
     {
         // Cleanup logic
-        RoR2.NetworkUser.onPostNetworkUserStart -= NetworkUser_onPostNetworkUserStart;
+        NetworkUser.onPostNetworkUserStart -= NetworkUser_onPostNetworkUserStart;
         On.RoR2.UI.RuleChoiceController.OnClick -= DifficultyConfigUI.RuleChoiceController_OnClick;
         Run.onRunStartGlobal -= Run_onRunStartGlobal;
         Run.onRunDestroyGlobal -= Run_onRunDestroyGlobal;
@@ -89,7 +89,7 @@ public class CustomDifficulty : BaseUnityPlugin
     {
         if (!sender || !sender.teamComponent) return;
 
-        Dictionary<string, DifficultyConfig.Stat>? activeStats = null;
+        Dictionary<string, DifficultyConfig.Stat> activeStats;
 
         if (sender.isPlayerControlled)
         {
@@ -112,7 +112,7 @@ public class CustomDifficulty : BaseUnityPlugin
         foreach (var kvp in activeStats)
         {
             // If the stat value is the default value, skip it to save processing time
-            if (kvp.Value.isDefault()) continue;
+            if (kvp.Value.IsDefault()) continue;
 
             // Look up the pre-compiled delegate by the field's name
             if (DifficultyConfig.Accessors.TryGetValue(kvp.Key, out var accessor))

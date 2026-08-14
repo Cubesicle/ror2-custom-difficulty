@@ -5,7 +5,7 @@ using UnityEngine.Networking;
 
 public class SyncConfigMessage : INetMessage
 {
-    private DifficultyConfig.Stats tempStats = new();
+    private readonly DifficultyConfig.Stats tempStats = new();
 
     public SyncConfigMessage() { }
 
@@ -18,7 +18,7 @@ public class SyncConfigMessage : INetMessage
         // We use ushort (a 16-bit integer, max 65,535) because it only takes 2 bytes of payload data.
         // A single string like "baseAttackSpeedAdd" takes ~36 bytes to send over the network.
         // By sending the list index instead of the string, we save lots of space.
-        List<(ushort index, float value)> playerStatsToSend = new();
+        List<(ushort index, float value)> playerStatsToSend = [];
         for (ushort i = 0; i < DifficultyConfig.StatNames.Count; i++)
         {
             string key = DifficultyConfig.StatNames[i];
@@ -27,7 +27,7 @@ public class SyncConfigMessage : INetMessage
             // If the stat is exactly 0f, adding 0f in RecalculateStatsAPI does nothing. 
             // Skipping it entirely means we don't send useless data over the network, 
             // which prevents hitting Unity's ~1,100 byte message limit.
-            if (DifficultyConfig.ActiveStats.Player.TryGetValue(key, out DifficultyConfig.Stat val) && !val.isDefault())
+            if (DifficultyConfig.ActiveStats.Player.TryGetValue(key, out DifficultyConfig.Stat val) && !val.IsDefault())
             {
                 playerStatsToSend.Add((i, val.Value));
             }
@@ -43,11 +43,11 @@ public class SyncConfigMessage : INetMessage
         }
 
         // Serialize Enemy Stats (Only Non-Zero Values)
-        List<(ushort index, float value)> enemyStatsToSend = new();
+        List<(ushort index, float value)> enemyStatsToSend = [];
         for (ushort i = 0; i < DifficultyConfig.StatNames.Count; i++)
         {
             string key = DifficultyConfig.StatNames[i];
-            if (DifficultyConfig.ActiveStats.Enemy.TryGetValue(key, out DifficultyConfig.Stat val) && !val.isDefault())
+            if (DifficultyConfig.ActiveStats.Enemy.TryGetValue(key, out DifficultyConfig.Stat val) && !val.IsDefault())
             {
                 enemyStatsToSend.Add((i, val.Value));
             }
@@ -79,7 +79,7 @@ public class SyncConfigMessage : INetMessage
             if (index < DifficultyConfig.StatNames.Count)
             {
                 string statName = DifficultyConfig.StatNames[index];
-                DifficultyConfig.Stat newStat = new DifficultyConfig.Stat(DifficultyConfig.Stat.typeFromString(statName), val);
+                DifficultyConfig.Stat newStat = new(DifficultyConfig.Stat.TypeFromString(statName), val);
                 tempStats.Player[DifficultyConfig.StatNames[index]] = newStat;
             }
         }
@@ -94,7 +94,7 @@ public class SyncConfigMessage : INetMessage
             if (index < DifficultyConfig.StatNames.Count)
             {
                 string statName = DifficultyConfig.StatNames[index];
-                DifficultyConfig.Stat newStat = new DifficultyConfig.Stat(DifficultyConfig.Stat.typeFromString(statName), val);
+                DifficultyConfig.Stat newStat = new(DifficultyConfig.Stat.TypeFromString(statName), val);
                 tempStats.Enemy[DifficultyConfig.StatNames[index]] = newStat;
             }
         }

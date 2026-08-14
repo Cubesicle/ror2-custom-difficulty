@@ -16,24 +16,18 @@ public static class DifficultyConfig
         Multiplier = 1
     }
 
-    public class Stat
+    public class Stat(StatType statType, float value)
     {
-        public StatType Type { get; private set; }
-        public float Value;
+        public StatType Type { get; private set; } = statType;
+        public float Value = value;
 
-        public Stat(StatType statType, float value)
-        {
-            Type = statType;
-            Value = value;
-        }
-
-        public static StatType typeFromString(string str)
+        public static StatType TypeFromString(string str)
         {
             // Assume that all stat names end with either "add" or "mult" lol.
             return str.EndsWith("add", StringComparison.OrdinalIgnoreCase) ? StatType.Adder : StatType.Multiplier;
         }
 
-        public bool isDefault()
+        public bool IsDefault()
         {
             return Value == (float)Type;
         }
@@ -42,23 +36,23 @@ public static class DifficultyConfig
     public class Stats
     {
         public float ScalingFactor;
-        public Dictionary<string, Stat> Player = new Dictionary<string, Stat>();
-        public Dictionary<string, Stat> Enemy = new Dictionary<string, Stat>();
+        public Dictionary<string, Stat> Player = [];
+        public Dictionary<string, Stat> Enemy = [];
     }
 
-    public static ConfigFile? configFile { private get; set; }
+    public static ConfigFile? ConfigFile { private get; set; }
 
     // We use a List to maintain a strict, ordered record of stat field names.
     // Because C# Reflection (GetFields) does NOT guarantee a deterministic order 
     // across different machines or OS environments, we explicitly sort the fields 
     // alphabetically. This ensures both the Host and the Client generate this exact 
     // same list in the exact same order to prevent network desyncs.
-    public static List<string> StatNames = new List<string>();
+    public static List<string> StatNames = [];
 
     // Saved settings on the player's local machine
     public static ConfigEntry<float>? ScalingFactorConfig;
-    public static Dictionary<string, ConfigEntry<float>> PlayerConfigs = new Dictionary<string, ConfigEntry<float>>();
-    public static Dictionary<string, ConfigEntry<float>> EnemyConfigs = new Dictionary<string, ConfigEntry<float>>();
+    public static Dictionary<string, ConfigEntry<float>> PlayerConfigs = [];
+    public static Dictionary<string, ConfigEntry<float>> EnemyConfigs = [];
 
     // Active settings used purely for the current multiplayer run
     public static Stats ActiveStats = new();
@@ -74,13 +68,13 @@ public static class DifficultyConfig
     }
 
     // Stores compiled delegates, mapped by field name
-    public static Dictionary<string, StatAccessor> Accessors = new Dictionary<string, StatAccessor>();
+    public static Dictionary<string, StatAccessor> Accessors = [];
 
     public static void Bind()
     {
-        if (configFile is null) return;
+        if (ConfigFile is null) return;
 
-        ScalingFactorConfig = configFile.Bind(
+        ScalingFactorConfig = ConfigFile.Bind(
             "Run Stats",
             "Scaling Factor",
             1f,
@@ -88,10 +82,9 @@ public static class DifficultyConfig
         );
 
         // Fetch and explicitly sort fields alphabetically to guarantee network determinism
-        FieldInfo[] fields = typeof(RecalculateStatsAPI.StatHookEventArgs)
+        FieldInfo[] fields = [.. typeof(RecalculateStatsAPI.StatHookEventArgs)
             .GetFields(BindingFlags.Public | BindingFlags.Instance)
-            .OrderBy(f => f.Name)
-            .ToArray();
+            .OrderBy(f => f.Name)];
 
         foreach (FieldInfo field in fields)
         {
@@ -108,14 +101,14 @@ public static class DifficultyConfig
                 var setter = Expression.Lambda<SetStatDelegate>(Expression.Assign(fieldAccess, valueParam), argsParam, valueParam).Compile();
                 Accessors[field.Name] = new StatAccessor { Get = getter, Set = setter };
 
-                StatType statType = Stat.typeFromString(field.Name);
+                StatType statType = Stat.TypeFromString(field.Name);
                 string operation = statType == StatType.Adder ? "ADDED" : "MULTIPLIED";
                 string description = $"Amount {operation} to {field.Name}.";
 
-                var playerConfig = configFile.Bind("Player Stats", field.Name, (float)statType, description);
+                var playerConfig = ConfigFile.Bind("Player Stats", field.Name, (float)statType, description);
                 PlayerConfigs.Add(field.Name, playerConfig);
 
-                var enemyConfig = configFile.Bind("Enemy Stats", field.Name, (float)statType, description);
+                var enemyConfig = ConfigFile.Bind("Enemy Stats", field.Name, (float)statType, description);
                 EnemyConfigs.Add(field.Name, enemyConfig);
             }
         }
@@ -123,17 +116,17 @@ public static class DifficultyConfig
 
     public static void Save()
     {
-        if (!isHost()) return;
+        if (!IsHost()) return;
 
-        configFile?.Save();
+        ConfigFile?.Save();
         SyncHostConfigToClients();
     }
 
     public static void Reload()
     {
-        if (!isHost()) return;
+        if (!IsHost()) return;
 
-        configFile?.Reload();
+        ConfigFile?.Reload();
         SyncHostConfigToClients();
     }
 
@@ -148,11 +141,11 @@ public static class DifficultyConfig
 
     private static void SyncHostConfigToClients()
     {
-        if (!isHost() || ScalingFactorConfig is null) return;
+        if (!IsHost() || ScalingFactorConfig is null) return;
 
-        Stats newStats = new Stats { ScalingFactor = ScalingFactorConfig.Value };
-        foreach (var kvp in PlayerConfigs) newStats.Player[kvp.Key] = new Stat(Stat.typeFromString(kvp.Key), kvp.Value.Value);
-        foreach (var kvp in EnemyConfigs) newStats.Enemy[kvp.Key] = new Stat(Stat.typeFromString(kvp.Key), kvp.Value.Value);
+        Stats newStats = new() { ScalingFactor = ScalingFactorConfig.Value };
+        foreach (var kvp in PlayerConfigs) newStats.Player[kvp.Key] = new Stat(Stat.TypeFromString(kvp.Key), kvp.Value.Value);
+        foreach (var kvp in EnemyConfigs) newStats.Enemy[kvp.Key] = new Stat(Stat.TypeFromString(kvp.Key), kvp.Value.Value);
 
         ApplySyncedSettings(newStats);
 
@@ -161,7 +154,7 @@ public static class DifficultyConfig
         Log.Info("Host updated custom difficulty stats and synced to clients.");
     }
 
-    private static bool isHost()
+    private static bool IsHost()
     {
         return UnityEngine.Networking.NetworkServer.active;
     }
