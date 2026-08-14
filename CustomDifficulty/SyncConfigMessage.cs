@@ -1,4 +1,5 @@
 using R2API.Networking.Interfaces;
+using RoR2;
 using UnityEngine.Networking;
 using System.Collections.Generic;
 
@@ -107,6 +108,12 @@ public class SyncConfigMessage : INetMessage
 
         // Atomically swap the dictionaries and update the difficulty definition
         DifficultyConfig.ApplySyncedSettings(tempStats);
+
+        // Force all active bodies to update immediately with the new stats
+        foreach (var body in CharacterBody.readOnlyInstancesList)
+        {
+            if (body) body.MarkAllStatsDirty();
+        }
 
         Log.Info("Successfully synced custom difficulty stats from Host.");
     }
