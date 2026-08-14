@@ -3,6 +3,7 @@ using R2API;
 using R2API.Networking.Interfaces;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Linq;
 using System.Linq.Expressions;
 
 public static class DifficultyConfig
@@ -15,6 +16,13 @@ public static class DifficultyConfig
     }
 
     public static ConfigFile? configFile { private get; set; }
+
+    // We use a List to maintain a strict, ordered record of stat field names.
+    // Because C# Reflection (GetFields) does NOT guarantee a deterministic order 
+    // across different machines or OS environments, we explicitly sort the fields 
+    // alphabetically. This ensures both the Host and the Client generate this exact 
+    // same list in the exact same order to prevent network desyncs.
+    public static List<string> StatNames = new List<string>();
 
     // Saved settings on the player's local machine
     public static ConfigEntry<float>? ScalingFactorConfig;
@@ -48,11 +56,19 @@ public static class DifficultyConfig
             "Base difficulty time-scaling factor. (Drizzle=1.0, Rainstorm=2.0, Monsoon=3.0)"
         );
 
-        FieldInfo[] fields = typeof(RecalculateStatsAPI.StatHookEventArgs).GetFields(BindingFlags.Public | BindingFlags.Instance);
+        // Fetch and explicitly sort fields alphabetically to guarantee network determinism
+        FieldInfo[] fields = typeof(RecalculateStatsAPI.StatHookEventArgs)
+            .GetFields(BindingFlags.Public | BindingFlags.Instance)
+            .OrderBy(f => f.Name)
+            .ToArray();
+
         foreach (FieldInfo field in fields)
         {
             if (field.FieldType == typeof(float))
             {
+                // Add the field name to our ordered list as we iterate.
+                StatNames.Add(field.Name);
+
                 var argsParam = Expression.Parameter(typeof(RecalculateStatsAPI.StatHookEventArgs), "args");
                 var valueParam = Expression.Parameter(typeof(float), "value");
                 var fieldAccess = Expression.Field(argsParam, field);
