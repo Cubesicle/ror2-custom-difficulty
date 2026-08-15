@@ -86,7 +86,7 @@ public static class DifficultyConfigUI
         GUILayout.Label("Scaling Factor (Time Diff.)", GUILayout.Width(200));
 
         // Determine value to show
-        float currentScaling = IsHost() ? DifficultyConfig.ScalingFactorConfig!.Value : DifficultyConfig.ActiveStats.ScalingFactor;
+        float currentScaling = IsHost() ? DifficultyConfig.Configs.ScalingFactor!.Value : DifficultyConfig.ActiveStats.ScalingFactor;
 
         if (!textBuffers.ContainsKey("ScalingFactor") || !IsHost())
         {
@@ -106,12 +106,12 @@ public static class DifficultyConfigUI
 
             if (float.TryParse(textBuffers["ScalingFactor"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedScaling))
             {
-                DifficultyConfig.ScalingFactorConfig!.Value = parsedScaling;
+                DifficultyConfig.Configs.ScalingFactor!.Value = parsedScaling;
             }
             else if (!isFocused)
             {
                 // Revert to default (1.0) when unfocused and blank/invalid
-                DifficultyConfig.ScalingFactorConfig!.Value = 1f;
+                DifficultyConfig.Configs.ScalingFactor!.Value = 1f;
                 textBuffers["ScalingFactor"] = "1";
             }
         }
@@ -144,7 +144,7 @@ public static class DifficultyConfigUI
         scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(300));
 
         // We still iterate over the Host's local config keys to get the list of stats
-        var configKeys = selectedTab == 0 ? DifficultyConfig.PlayerConfigs : DifficultyConfig.EnemyConfigs;
+        var configKeys = selectedTab == 0 ? DifficultyConfig.Configs.Player : DifficultyConfig.Configs.Enemy;
 
         // But we need the Active dictionary to show clients the synced values
         var syncedStats = selectedTab == 0 ? DifficultyConfig.ActiveStats.Player : DifficultyConfig.ActiveStats.Enemy;

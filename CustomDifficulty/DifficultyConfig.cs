@@ -38,6 +38,26 @@ public static class DifficultyConfig
         public float ScalingFactor;
         public Dictionary<string, Stat> Player = [];
         public Dictionary<string, Stat> Enemy = [];
+
+        public static Stats FromConfig(StatsConfigs configs)
+        {
+            // Fallback in case configs aren't bound yet
+            if (configs.ScalingFactor is null) return new Stats();
+
+            return new Stats
+            {
+                ScalingFactor = configs.ScalingFactor.Value,
+                Player = configs.Player.ToDictionary(k => k.Key, v => new Stat(Stat.TypeFromString(v.Key), v.Value.Value)),
+                Enemy = configs.Enemy.ToDictionary(k => k.Key, v => new Stat(Stat.TypeFromString(v.Key), v.Value.Value))
+            };
+        }
+    }
+
+    public class StatsConfigs
+    {
+        public ConfigEntry<float>? ScalingFactor;
+        public Dictionary<string, ConfigEntry<float>> Player = [];
+        public Dictionary<string, ConfigEntry<float>> Enemy = [];
     }
 
     public static ConfigFile? ConfigFile { private get; set; }
@@ -50,9 +70,7 @@ public static class DifficultyConfig
     public static List<string> StatNames = [];
 
     // Saved settings on the player's local machine
-    public static ConfigEntry<float>? ScalingFactorConfig;
-    public static Dictionary<string, ConfigEntry<float>> PlayerConfigs = [];
-    public static Dictionary<string, ConfigEntry<float>> EnemyConfigs = [];
+    public static StatsConfigs Configs = new();
 
     // Active settings used purely for the current multiplayer run
     public static Stats ActiveStats = new();
@@ -74,7 +92,7 @@ public static class DifficultyConfig
     {
         if (ConfigFile is null) return;
 
-        ScalingFactorConfig = ConfigFile.Bind(
+        Configs.ScalingFactor = ConfigFile.Bind(
             "Run Stats",
             "Scaling Factor",
             1f,
@@ -106,10 +124,10 @@ public static class DifficultyConfig
                 string description = $"Amount {operation} to {field.Name}.";
 
                 var playerConfig = ConfigFile.Bind("Player Stats", field.Name, (float)statType, description);
-                PlayerConfigs.Add(field.Name, playerConfig);
+                Configs.Player.Add(field.Name, playerConfig);
 
                 var enemyConfig = ConfigFile.Bind("Enemy Stats", field.Name, (float)statType, description);
-                EnemyConfigs.Add(field.Name, enemyConfig);
+                Configs.Enemy.Add(field.Name, enemyConfig);
             }
         }
     }
@@ -141,13 +159,9 @@ public static class DifficultyConfig
 
     private static void SyncHostConfigToClients()
     {
-        if (!IsHost() || ScalingFactorConfig is null) return;
+        if (!IsHost() || Configs.ScalingFactor is null) return;
 
-        Stats newStats = new() { ScalingFactor = ScalingFactorConfig.Value };
-        foreach (var kvp in PlayerConfigs) newStats.Player[kvp.Key] = new Stat(Stat.TypeFromString(kvp.Key), kvp.Value.Value);
-        foreach (var kvp in EnemyConfigs) newStats.Enemy[kvp.Key] = new Stat(Stat.TypeFromString(kvp.Key), kvp.Value.Value);
-
-        ApplySyncedSettings(newStats);
+        ApplySyncedSettings(Stats.FromConfig(Configs));
 
         new SyncConfigMessage().Send(R2API.Networking.NetworkDestination.Clients);
 
